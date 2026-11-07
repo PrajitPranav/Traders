@@ -152,3 +152,4 @@ The output APK will be located at:
 - Remote: `https://github.com/PrajitPranav/Traders.git`
 - Local commits are made per development phase.
 - Pushes are performed manually by the repository owner.
+
