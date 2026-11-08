@@ -106,6 +106,51 @@ class _EmployeeDirectoryScreenState
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            // Salary entry (salary payments & advances live here, not on Home)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Material(
+                  color: AppColors.primaryNavy,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    key: const Key('open_salary_button'),
+                    onTap: () => context.push(AppRoutes.salary),
+                    borderRadius: BorderRadius.circular(14),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 30),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Salary',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Record salary payments and advances',
+                                  style: TextStyle(fontSize: 15, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 26),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             // Search Bar
             SliverToBoxAdapter(
               child: Padding(
@@ -209,7 +254,7 @@ class _EmployeeDirectoryScreenState
                                               child: Text(
                                                 employee.name,
                                                 style: const TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: 18,
                                                   fontWeight: FontWeight.w700,
                                                   color: AppColors.textPrimary,
                                                 ),
@@ -232,7 +277,7 @@ class _EmployeeDirectoryScreenState
                                               child: Text(
                                                 employee.employeeCode,
                                                 style: const TextStyle(
-                                                  fontSize: 11,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w700,
                                                   color: AppColors.primaryNavy,
                                                 ),

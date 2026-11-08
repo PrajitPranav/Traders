@@ -6,6 +6,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../domain/entities/employee.dart';
 import '../../providers/employee_providers.dart';
+import '../../providers/repository_providers.dart';
+import '../../providers/salary_providers.dart';
 
 class EditEmployeeSheet extends ConsumerStatefulWidget {
   final Employee employee;
@@ -30,7 +32,10 @@ class _EditEmployeeSheetState extends ConsumerState<EditEmployeeSheet> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _designationController;
+  late TextEditingController _salaryController;
   late DateTime _selectedJoiningDate;
+  int? _initialSalaryPaise;
+  bool _isLoadingSalary = true;
   bool _isSubmitting = false;
 
   @override
@@ -39,9 +44,31 @@ class _EditEmployeeSheetState extends ConsumerState<EditEmployeeSheet> {
     _nameController = TextEditingController(text: widget.employee.name);
     _phoneController = TextEditingController(text: widget.employee.phone ?? '');
     _designationController = TextEditingController(text: widget.employee.designation ?? '');
+    _salaryController = TextEditingController();
     _selectedJoiningDate = widget.employee.joiningDate != null
         ? AppDateUtils.parseIsoDateString(widget.employee.joiningDate!)
         : DateTime.now();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCurrentSalary();
+    });
+  }
+
+  Future<void> _loadCurrentSalary() async {
+    try {
+      final record = await ref.read(salaryRepositoryProvider).getCurrentSalary(widget.employee.id);
+      if (record != null && mounted) {
+        setState(() {
+          _initialSalaryPaise = record.monthlySalaryPaise;
+          _salaryController.text = (record.monthlySalaryPaise ~/ 100).toString();
+          _isLoadingSalary = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoadingSalary = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingSalary = false);
+    }
   }
 
   @override
@@ -49,6 +76,7 @@ class _EditEmployeeSheetState extends ConsumerState<EditEmployeeSheet> {
     _nameController.dispose();
     _phoneController.dispose();
     _designationController.dispose();
+    _salaryController.dispose();
     super.dispose();
   }
 
@@ -80,6 +108,22 @@ class _EditEmployeeSheetState extends ConsumerState<EditEmployeeSheet> {
 
       await ref.read(employeeListProvider.notifier).updateEmployee(updated);
       ref.invalidate(employeeDetailProvider(widget.employee.id));
+
+      // Handle salary update if changed
+      final salaryText = _salaryController.text.trim();
+      if (salaryText.isNotEmpty) {
+        final newSalaryRupees = int.tryParse(salaryText);
+        if (newSalaryRupees != null && newSalaryRupees > 0) {
+          final newSalaryPaise = newSalaryRupees * 100;
+          if (_initialSalaryPaise == null || _initialSalaryPaise != newSalaryPaise) {
+            await ref.read(salaryActionNotifierProvider.notifier).updateSalary(
+                  employeeId: widget.employee.id,
+                  newSalaryPaise: newSalaryPaise,
+                  effectiveFromIso: AppDateUtils.toIsoDateString(DateTime.now()),
+                );
+          }
+        }
+      }
 
       if (mounted) {
         Navigator.of(context).pop();
@@ -228,6 +272,32 @@ class _EditEmployeeSheetState extends ConsumerState<EditEmployeeSheet> {
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Monthly Salary
+              TextFormField(
+                controller: _salaryController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Monthly Salary (₹)',
+                  prefixText: '₹ ',
+                  prefixIcon: const Icon(Icons.currency_rupee, size: 20),
+                  helperText: _isLoadingSalary
+                      ? 'Loading current salary...'
+                      : 'Updating salary affects current and future periods',
+                  helperMaxLines: 2,
+                ),
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    final num = int.tryParse(val.trim());
+                    if (num == null || num <= 0) {
+                      return 'Please enter a valid salary amount';
+                    }
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
 

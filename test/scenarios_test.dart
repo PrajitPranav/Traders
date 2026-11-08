@@ -81,6 +81,20 @@ void main() {
           ''');
 
           await db.execute('''
+            CREATE TABLE salary_payments (
+              id TEXT PRIMARY KEY,
+              employee_id TEXT NOT NULL,
+              amount_paise INTEGER NOT NULL,
+              payment_date TEXT NOT NULL,
+              salary_period TEXT NOT NULL,
+              description TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE
+            );
+          ''');
+
+          await db.execute('''
             CREATE TABLE app_settings (
               id TEXT PRIMARY KEY,
               setting_key TEXT UNIQUE NOT NULL,

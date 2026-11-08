@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/date_formatter.dart';
 import '../../domain/entities/advance.dart';
 import '../../domain/entities/salary_record.dart';
+import '../../domain/entities/salary_payment.dart';
 import '../../domain/entities/salary_summary.dart';
 import 'attendance_providers.dart';
 import 'repository_providers.dart';
@@ -77,11 +78,85 @@ final employeePeriodSalarySummaryProvider = FutureProvider.family<
   return await repo.getSalarySummary(arg.employeeId, arg.salaryPeriod);
 });
 
+/// Full financial position (salary, advances, regular paid, remaining payable)
+final financialOverviewProvider = FutureProvider.family<FinancialOverview,
+    ({String employeeId, String salaryPeriod})>((ref, arg) async {
+  final repo = ref.watch(salaryPaymentRepositoryProvider);
+  return await repo.getFinancialOverview(arg.employeeId, arg.salaryPeriod);
+});
+
+/// Regular salary payments for an employee in a salary period
+final employeePeriodPaymentsProvider = FutureProvider.family<List<SalaryPayment>,
+    ({String employeeId, String salaryPeriod})>((ref, arg) async {
+  final repo = ref.watch(salaryPaymentRepositoryProvider);
+  return await repo.getPaymentsForPeriod(arg.employeeId, arg.salaryPeriod);
+});
+
+/// Advances for an employee in a salary period (tuple-keyed, used by Salary screen)
+final employeePeriodAdvancesProvider = FutureProvider.family<List<Advance>,
+    ({String employeeId, String salaryPeriod})>((ref, arg) async {
+  final repo = ref.watch(advanceRepositoryProvider);
+  return await repo.getAdvancesForPeriod(arg.employeeId, arg.salaryPeriod);
+});
+
 /// State notifier for salary revisions and advance payments
 class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
 
   SalaryActionNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  void _refreshFinancials() {
+    _ref.invalidate(salarySummaryProvider);
+    _ref.invalidate(employeePeriodSalarySummaryProvider);
+    _ref.invalidate(financialOverviewProvider);
+    _ref.invalidate(employeePeriodPaymentsProvider);
+    _ref.invalidate(employeePeriodAdvancesProvider);
+    _ref.invalidate(employeeAdvancesForPeriodProvider);
+    _ref.invalidate(employeeAllAdvancesProvider);
+    _ref.invalidate(employeeMonthAdvancesMapProvider);
+    _ref.invalidate(allDateAdvancesProvider);
+    _ref.invalidate(allMonthAdvancesByDateProvider);
+    _ref.invalidate(allPeriodAdvancesProvider);
+  }
+
+  /// Records a REGULAR salary payment (separate from advances). Rethrows on failure.
+  Future<void> recordPayment({
+    required String employeeId,
+    required int amountPaise,
+    required String paymentDateIso,
+    required String salaryPeriod,
+    String? description,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(salaryPaymentRepositoryProvider);
+      await repo.createPayment(
+        employeeId: employeeId,
+        amountPaise: amountPaise,
+        paymentDateIso: paymentDateIso,
+        salaryPeriod: salaryPeriod,
+        description: description,
+      );
+      _refreshFinancials();
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deletePayment({required String paymentId}) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(salaryPaymentRepositoryProvider);
+      await repo.deletePayment(paymentId);
+      _refreshFinancials();
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 
   Future<void> recordAdvance({
     required String employeeId,
@@ -104,12 +179,14 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
       // Refresh financial and calendar providers across the entire app
       _ref.invalidate(salarySummaryProvider(employeeId));
       _ref.invalidate(employeePeriodSalarySummaryProvider);
+      _ref.invalidate(financialOverviewProvider);
       _ref.invalidate(employeeAdvancesForPeriodProvider(employeeId));
       _ref.invalidate(employeeAllAdvancesProvider(employeeId));
       _ref.invalidate(employeeMonthAdvancesMapProvider(employeeId));
       _ref.invalidate(allDateAdvancesProvider(transactionDateIso));
       _ref.invalidate(allMonthAdvancesByDateProvider);
       _ref.invalidate(allPeriodAdvancesProvider(salaryPeriod));
+      _refreshFinancials();
 
       state = const AsyncValue.data(null);
     } catch (e, st) {
@@ -129,13 +206,14 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
 
       _ref.invalidate(salarySummaryProvider(employeeId));
       _ref.invalidate(employeePeriodSalarySummaryProvider);
+      _ref.invalidate(financialOverviewProvider);
       _ref.invalidate(employeeAdvancesForPeriodProvider(employeeId));
       _ref.invalidate(employeeAllAdvancesProvider(employeeId));
       _ref.invalidate(employeeMonthAdvancesMapProvider(employeeId));
       _ref.invalidate(allDateAdvancesProvider);
       _ref.invalidate(allMonthAdvancesByDateProvider);
       _ref.invalidate(allPeriodAdvancesProvider);
-
+      _refreshFinancials();
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -159,6 +237,7 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
 
       _ref.invalidate(salarySummaryProvider(employeeId));
       _ref.invalidate(employeePeriodSalarySummaryProvider);
+      _ref.invalidate(financialOverviewProvider);
       _ref.invalidate(employeeSalaryHistoryProvider(employeeId));
 
       state = const AsyncValue.data(null);

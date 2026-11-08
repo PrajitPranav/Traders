@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_routes.dart';
 import '../screens/admin/admin_profile_screen.dart';
 import '../screens/admin/backup_restore_screen.dart';
+import '../screens/attendance/attendance_screen.dart';
+import '../screens/attendance/mark_attendance_screen.dart';
 import '../screens/employee/employee_detail_screen.dart';
 import '../screens/employee/employee_directory_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/leave_report/leave_report_screen.dart';
 import '../screens/reports/employee_report_screen.dart';
-import '../screens/salary/salary_advance_screen.dart';
+import '../screens/salary/salary_management_screen.dart';
 import '../screens/splash/splash_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -39,12 +41,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LeaveReportScreen(),
       ),
       GoRoute(
+        path: AppRoutes.attendance,
+        builder: (context, state) => const AttendanceScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.markAttendance,
+        builder: (context, state) {
+          // Optional ?date=YYYY-MM-DD, otherwise today's real date is used.
+          final raw = state.uri.queryParameters['date'];
+          return MarkAttendanceScreen(
+            initialDate: raw == null ? null : DateTime.tryParse(raw),
+          );
+        },
+      ),
+      GoRoute(
         path: AppRoutes.employeeReports,
         builder: (context, state) => const EmployeeReportScreen(),
       ),
       GoRoute(
-        path: AppRoutes.salaryAdvance,
-        builder: (context, state) => const SalaryAdvanceScreen(),
+        path: AppRoutes.salary,
+        builder: (context, state) => SalaryManagementScreen(
+          initialEmployeeId: state.uri.queryParameters['employeeId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.employeeDetail,

@@ -17,6 +17,7 @@ class AppStrings {
   static const String salaryAndAdvance = 'Salary / Salary Advance';
   static const String salaryAndAdvanceSubtitle =
       'Record and manage employee salary advances.';
+  static const String attendanceSubtitle = 'Mark and manage daily employee attendance.';
   static const String employeesSectionSubtitle = 'Manage and view all employees';
   static const String presentToday = 'Present Today';
   static const String absentToday = 'Absent Today';

@@ -46,13 +46,28 @@ final allDateAttendanceProvider =
   return await repo.getAllAttendanceForDate(dateIso);
 });
 
-/// State notifier for attendance mutation operations
+/// State notifier for attendance mutation operations.
+///
+/// Every write goes through the single [AttendanceRepository] and then
+/// invalidates every attendance provider (Home Attendance, Leave Report,
+/// Employee Profile, counts, reports), so all screens share one source of truth.
 class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
 
   AttendanceActionNotifier(this._ref) : super(const AsyncValue.data(null));
 
-  Future<void> record({
+  void _refreshAll() {
+    // Invalidating a family invalidates all of its instances.
+    _ref.invalidate(employeeAttendanceMapProvider);
+    _ref.invalidate(employeeAttendanceCountsProvider);
+    _ref.invalidate(dailyAttendanceProvider);
+    _ref.invalidate(allDateAttendanceProvider);
+    _ref.invalidate(allMonthAttendanceByDateProvider);
+    _ref.invalidate(dashboardStatsProvider);
+  }
+
+  /// Returns true only when the database write really succeeded.
+  Future<bool> record({
     required String employeeId,
     required String dateIso,
     required AttendanceStatus status,
@@ -65,22 +80,38 @@ class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
         dateIso: dateIso,
         status: status,
       );
-
-      // Invalidate relevant providers to trigger immediate UI refresh
-      _ref.invalidate(employeeAttendanceMapProvider(employeeId));
-      _ref.invalidate(employeeAttendanceCountsProvider(employeeId));
-      _ref.invalidate(dailyAttendanceProvider((employeeId: employeeId, dateIso: dateIso)));
-      _ref.invalidate(allDateAttendanceProvider(dateIso));
-      _ref.invalidate(allMonthAttendanceByDateProvider);
-      _ref.invalidate(dashboardStatsProvider);
-
+      _refreshAll();
       state = const AsyncValue.data(null);
+      return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return false;
     }
   }
 
-  Future<void> remove({
+  /// Saves many employees for one date atomically (bulk "Mark Attendance").
+  /// Rethrows on failure so the UI can show an honest error.
+  Future<void> saveBulk({
+    required String dateIso,
+    required Map<String, AttendanceStatus> statusByEmployeeId,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(attendanceRepositoryProvider);
+      await repo.saveAttendanceForDate(
+        dateIso: dateIso,
+        statusByEmployeeId: statusByEmployeeId,
+      );
+      _refreshAll();
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  /// Returns true only when the database write really succeeded.
+  Future<bool> remove({
     required String employeeId,
     required String dateIso,
   }) async {
@@ -91,17 +122,12 @@ class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
         employeeId: employeeId,
         dateIso: dateIso,
       );
-
-      _ref.invalidate(employeeAttendanceMapProvider(employeeId));
-      _ref.invalidate(employeeAttendanceCountsProvider(employeeId));
-      _ref.invalidate(dailyAttendanceProvider((employeeId: employeeId, dateIso: dateIso)));
-      _ref.invalidate(allDateAttendanceProvider(dateIso));
-      _ref.invalidate(allMonthAttendanceByDateProvider);
-      _ref.invalidate(dashboardStatsProvider);
-
+      _refreshAll();
       state = const AsyncValue.data(null);
+      return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return false;
     }
   }
 }

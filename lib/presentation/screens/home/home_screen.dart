@@ -211,16 +211,17 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 14),
 
-              // 5. Salary / Salary Advance Card
+              // 5. Attendance Card (replaces the old Salary Advance card;
+              // salary & advance records stay available under Employees > Salary)
               _DashboardFeatureCard(
-                label: 'SALARY / SALARY ADVANCE',
-                title: AppStrings.salaryAndAdvance,
-                subtitle: AppStrings.salaryAndAdvanceSubtitle,
-                icon: Icons.account_balance_wallet_rounded,
+                label: 'ATTENDANCE',
+                title: 'Attendance',
+                subtitle: AppStrings.attendanceSubtitle,
+                icon: Icons.fact_check_rounded,
                 accentColor: AppColors.primaryNavy,
                 accentBgColor: AppColors.primaryNavy.withValues(alpha: 0.08),
-                badgeText: 'PREPAID LEDGER',
-                onTap: () => context.push(AppRoutes.salaryAdvance),
+                badgeText: 'DAILY',
+                onTap: () => context.push(AppRoutes.attendance),
               ),
               const SizedBox(height: 18),
 
@@ -280,7 +281,7 @@ class _LeaveReportHeroCard extends StatelessWidget {
                         Text(
                           AppStrings.leaveReport,
                           style: TextStyle(
-                            fontSize: 19,
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: -0.2,
@@ -292,7 +293,7 @@ class _LeaveReportHeroCard extends StatelessWidget {
                     Text(
                       AppStrings.leaveReportSubtitle,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: Colors.white70,
                         height: 1.3,
@@ -477,7 +478,7 @@ class _DashboardFeatureCard extends StatelessWidget {
                           child: Text(
                             label,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: accentColor,
                               letterSpacing: 0.6,
@@ -496,7 +497,7 @@ class _DashboardFeatureCard extends StatelessWidget {
                           child: Text(
                             badgeText,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: accentColor,
                             ),
@@ -508,7 +509,7 @@ class _DashboardFeatureCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
                         height: 1.35,

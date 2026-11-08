@@ -1,10 +1,10 @@
 import 'package:uuid/uuid.dart';
 import '../../core/utils/currency_formatter.dart';
-import '../../core/utils/date_formatter.dart';
 import '../../domain/entities/advance.dart';
 import '../../domain/repositories/advance_repository.dart';
 import '../datasources/database_helper.dart';
 import '../models/advance_model.dart';
+import 'salary_balance_helper.dart';
 
 class SqliteAdvanceRepository implements AdvanceRepository {
   final DatabaseHelper _databaseHelper;
@@ -119,54 +119,20 @@ class SqliteAdvanceRepository implements AdvanceRepository {
     );
 
     await db.transaction((txn) async {
-      // Determine applicable monthly salary for the period
-      final parts = salaryPeriod.split('-');
-      String lastDayIso = transactionDateIso;
-      if (parts.length == 2) {
-        final year = int.tryParse(parts[0]);
-        final month = int.tryParse(parts[1]);
-        if (year != null && month != null) {
-          final lastDay = DateTime(year, month + 1, 0);
-          lastDayIso = AppDateUtils.toIsoDateString(lastDay);
-        }
-      }
-
-      var salaryRows = await txn.query(
-        'salary_records',
-        where: 'employee_id = ? AND effective_from <= ?',
-        whereArgs: [employeeId, lastDayIso],
-        orderBy: 'effective_from DESC, created_at DESC',
-        limit: 1,
-      );
-
-      if (salaryRows.isEmpty) {
-        salaryRows = await txn.query(
-          'salary_records',
-          where: 'employee_id = ?',
-          whereArgs: [employeeId],
-          orderBy: 'effective_from ASC, created_at ASC',
-          limit: 1,
-        );
-      }
-
-      final monthlySalaryPaise = salaryRows.isNotEmpty
-          ? (salaryRows.first['monthly_salary_paise'] as num).toInt()
-          : 0;
-
-      final existingResult = await txn.rawQuery(
-        'SELECT SUM(amount_paise) as total FROM advances WHERE employee_id = ? AND salary_period = ?',
-        [employeeId, salaryPeriod],
-      );
+      // Same balance rule as regular salary payments (shared helper):
+      // salary - advances - regular salary already paid.
+      final monthlySalaryPaise =
+          await SalaryBalanceHelper.monthlySalaryPaise(txn, employeeId, salaryPeriod);
       final existingAdvancesPaise =
-          (existingResult.isNotEmpty && existingResult.first['total'] != null)
-              ? (existingResult.first['total'] as num).toInt()
-              : 0;
+          await SalaryBalanceHelper.totalAdvancesPaise(txn, employeeId, salaryPeriod);
+      final paidPaise =
+          await SalaryBalanceHelper.totalPaymentsPaise(txn, employeeId, salaryPeriod);
 
-      final remainingPaise = monthlySalaryPaise - existingAdvancesPaise;
+      final remainingPaise = monthlySalaryPaise - existingAdvancesPaise - paidPaise;
 
       if (monthlySalaryPaise > 0 && amountPaise > remainingPaise) {
         throw StateError(
-          'Advance of ${CurrencyFormatter.formatPaise(amountPaise)} exceeds the remaining salary balance of ${CurrencyFormatter.formatPaise(remainingPaise)} for period $salaryPeriod.',
+          'Advance of ${CurrencyFormatter.formatPaise(amountPaise)} exceeds the remaining salary balance of ${CurrencyFormatter.formatPaise(remainingPaise < 0 ? 0 : remainingPaise)} for period $salaryPeriod.',
         );
       }
 

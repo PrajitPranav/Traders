@@ -38,5 +38,14 @@ abstract class AttendanceRepository {
 
   /// Retrieves all attendance records across active employees for a specific month, grouped by date ('YYYY-MM-DD').
   Future<Map<String, List<Attendance>>> getAllMonthAttendanceByDate(int year, int month);
+
+  /// Saves attendance for many employees on ONE date in a single SQLite
+  /// transaction. Existing records are updated (never duplicated); employees
+  /// that are not in [statusByEmployeeId] are left completely untouched.
+  /// Either every row is saved or none is.
+  Future<void> saveAttendanceForDate({
+    required String dateIso,
+    required Map<String, AttendanceStatus> statusByEmployeeId,
+  });
 }
 

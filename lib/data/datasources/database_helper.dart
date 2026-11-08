@@ -7,7 +7,32 @@ import 'package:sqflite/sqflite.dart';
 /// transactions, and migrations for Saravanas.
 class DatabaseHelper {
   static const String _databaseName = 'saravanas_traders.db';
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
+
+  /// Creates the regular salary payments table. Kept separate from `advances`
+  /// so that a salary advance (prepaid) and a regular salary payment can never
+  /// be confused. Amounts are integer paise.
+  static Future<void> createSalaryPaymentsTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS salary_payments (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL,
+        amount_paise INTEGER NOT NULL,
+        payment_date TEXT NOT NULL,
+        salary_period TEXT NOT NULL,
+        description TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE
+      );
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_salary_payments_employee_period ON salary_payments(employee_id, salary_period);',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_salary_payments_date ON salary_payments(payment_date);',
+    );
+  }
 
   DatabaseHelper._internal();
   static final DatabaseHelper instance = DatabaseHelper._internal();
@@ -109,6 +134,9 @@ class DatabaseHelper {
         );
       ''');
 
+      // 6. Regular salary payments (schema v2)
+      await createSalaryPaymentsTable(txn);
+
       // Useful query indexes
       await txn.execute('CREATE INDEX idx_attendance_employee_date ON attendance(employee_id, attendance_date);');
       await txn.execute('CREATE INDEX idx_attendance_date ON attendance(attendance_date);');
@@ -134,7 +162,12 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Schema migration logic for future versions
+    // Additive, non-destructive migrations: existing rows are never touched.
+    if (oldVersion < 2) {
+      await db.transaction((txn) async {
+        await createSalaryPaymentsTable(txn);
+      });
+    }
   }
 
   /// Closes database connection cleanly

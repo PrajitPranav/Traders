@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -10,6 +9,7 @@ import '../../../domain/entities/attendance.dart';
 import '../../providers/attendance_providers.dart';
 import '../../providers/salary_providers.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/month_calendar.dart';
 
 class AttendanceCalendarView extends ConsumerStatefulWidget {
   final String employeeId;
@@ -336,84 +336,42 @@ class _AttendanceCalendarViewState extends ConsumerState<AttendanceCalendarView>
               ),
               const SizedBox(height: 16),
 
-              // Calendar Container
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.cardBorder, width: 1),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: TableCalendar(
-                  firstDay: DateTime(2020),
-                  lastDay: DateTime(2035),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                  startingDayOfWeek: StartingDayOfWeek.monday,
-                  headerStyle: const HeaderStyle(
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                    titleTextStyle: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                    leftChevronIcon: Icon(Icons.chevron_left, color: AppColors.primaryNavy),
-                    rightChevronIcon: Icon(Icons.chevron_right, color: AppColors.primaryNavy),
-                  ),
-                  calendarStyle: const CalendarStyle(
-                    outsideDaysVisible: false,
-                    isTodayHighlighted: false,
-                  ),
-                  onPageChanged: (focusedDay) {
-                    setState(() {
-                      _focusedDay = focusedDay;
-                    });
-                    ref.read(selectedAttendanceMonthProvider.notifier).state = DateTime(
-                      focusedDay.year,
-                      focusedDay.month,
-                      1,
-                    );
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _focusedDay = focusedDay;
-                    });
-                    _onDaySelected(context, selectedDay, attendanceMap, advancesMap);
-                  },
-                  calendarBuilders: CalendarBuilders(
-                    defaultBuilder: (context, day, focusedDay) {
-                      return _buildCalendarCell(day, attendanceMap, advancesMap, isSelected: false);
-                    },
-                    selectedBuilder: (context, day, focusedDay) {
-                      return _buildCalendarCell(day, attendanceMap, advancesMap, isSelected: true);
-                    },
-                    todayBuilder: (context, day, focusedDay) {
-                      return _buildCalendarCell(day, attendanceMap, advancesMap, isSelected: isSameDay(_selectedDay, day), isToday: true);
-                    },
-                  ),
-                ),
+              // Shared aligned MonthCalendar
+              MonthCalendar(
+                focusedDay: _focusedDay,
+                selectedDay: _selectedDay,
+                marksFor: (day) {
+                  final iso = AppDateUtils.toIsoDateString(day);
+                  final status = attendanceMap[iso];
+                  final hasAdv = (advancesMap[iso]?.isNotEmpty) ?? false;
+                  return DayMarks(
+                    present: status == AttendanceStatus.present,
+                    absent: status == AttendanceStatus.absent,
+                    advance: hasAdv,
+                  );
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                    _selectedDay = selectedDay;
+                  });
+                  _onDaySelected(context, selectedDay, attendanceMap, advancesMap);
+                },
+                onPageChanged: (focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                  });
+                  ref.read(selectedAttendanceMonthProvider.notifier).state = DateTime(
+                    focusedDay.year,
+                    focusedDay.month,
+                    1,
+                  );
+                },
               ),
               const SizedBox(height: 16),
 
-              // Calendar Legend
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildLegendItem(AppColors.successGreen, 'Present'),
-                    _buildLegendItem(AppColors.dangerRed, 'Absent'),
-                    _buildLegendItem(Colors.transparent, 'Not Marked', borderColor: AppColors.cardBorder),
-                    _buildLegendDot(AppColors.advanceDot, 'Advance (₹)'),
-                  ],
-                ),
-              ),
+              // Shared Calendar Legend
+              const CalendarLegend(),
             ],
           ),
         );
@@ -465,109 +423,6 @@ class _AttendanceCalendarViewState extends ConsumerState<AttendanceCalendarView>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCalendarCell(
-    DateTime day,
-    Map<String, AttendanceStatus> attendanceMap,
-    Map<String, List<Advance>> advancesMap, {
-    bool isSelected = false,
-    bool isToday = false,
-  }) {
-    final dateIso = AppDateUtils.toIsoDateString(day);
-    final status = attendanceMap[dateIso];
-    final hasAdvances = advancesMap.containsKey(dateIso) && advancesMap[dateIso]!.isNotEmpty;
-
-    Color cellBg = Colors.transparent;
-    Color textColor = AppColors.textPrimary;
-
-    if (status == AttendanceStatus.present) {
-      cellBg = AppColors.successGreen.withValues(alpha: 0.16);
-      textColor = AppColors.successGreen;
-    } else if (status == AttendanceStatus.absent) {
-      cellBg = AppColors.dangerRed.withValues(alpha: 0.16);
-      textColor = AppColors.dangerRed;
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: cellBg,
-        borderRadius: BorderRadius.circular(8),
-        border: isSelected
-            ? Border.all(color: AppColors.primaryNavy, width: 2)
-            : (isToday ? Border.all(color: AppColors.accentTeal, width: 1.5) : null),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(
-            '${day.day}',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: isSelected || isToday || status != null ? FontWeight.w700 : FontWeight.w500,
-              color: textColor,
-            ),
-          ),
-          // Advance financial dot indicator
-          if (hasAdvances)
-            Positioned(
-              bottom: 4,
-              child: Container(
-                width: 5,
-                height: 5,
-                decoration: const BoxDecoration(
-                  color: AppColors.advanceDot,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(Color color, String label, {Color? borderColor}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color == Colors.transparent ? Colors.white : color.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: borderColor ?? color, width: 1.2),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLegendDot(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-        ),
-      ],
     );
   }
 }

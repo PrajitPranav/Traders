@@ -58,22 +58,60 @@ class SqliteAttendanceRepository implements AttendanceRepository {
     required String dateIso,
     required AttendanceStatus status,
   }) async {
+    await saveAttendanceForDate(
+      dateIso: dateIso,
+      statusByEmployeeId: {employeeId: status},
+    );
+  }
+
+  @override
+  Future<void> saveAttendanceForDate({
+    required String dateIso,
+    required Map<String, AttendanceStatus> statusByEmployeeId,
+  }) async {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateIso) ||
+        DateTime.tryParse(dateIso) == null) {
+      throw ArgumentError('Invalid attendance date "$dateIso".');
+    }
+    if (statusByEmployeeId.isEmpty) return;
+
     final db = await _databaseHelper.database;
     final nowIso = DateTime.now().toIso8601String();
 
-    // Upsert using SQLite REPLACE conflict resolution
-    await db.insert(
-      'attendance',
-      {
-        'id': _uuid.v4(),
-        'employee_id': employeeId,
-        'attendance_date': dateIso,
-        'status': status.toDbString(),
-        'created_at': nowIso,
-        'updated_at': nowIso,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    // One transaction: all rows commit together or none do.
+    await db.transaction((txn) async {
+      for (final entry in statusByEmployeeId.entries) {
+        final existing = await txn.query(
+          'attendance',
+          columns: ['id'],
+          where: 'employee_id = ? AND attendance_date = ?',
+          whereArgs: [entry.key, dateIso],
+          limit: 1,
+        );
+
+        if (existing.isNotEmpty) {
+          // Update in place: keeps the record id and created_at, never duplicates.
+          await txn.update(
+            'attendance',
+            {
+              'status': entry.value.toDbString(),
+              'updated_at': nowIso,
+            },
+            where: 'id = ?',
+            whereArgs: [existing.first['id']],
+          );
+        } else {
+          await txn.insert('attendance', {
+            'id': _uuid.v4(),
+            'employee_id': entry.key,
+            'attendance_date': dateIso,
+            'status': entry.value.toDbString(),
+            'created_at': nowIso,
+            'updated_at': nowIso,
+          });
+        }
+      }
+    });
   }
 
   @override

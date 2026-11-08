@@ -4,11 +4,13 @@ import '../../data/datasources/database_helper.dart';
 import '../../data/repositories/sqlite_advance_repository.dart';
 import '../../data/repositories/sqlite_attendance_repository.dart';
 import '../../data/repositories/sqlite_employee_repository.dart';
+import '../../data/repositories/sqlite_salary_payment_repository.dart';
 import '../../data/repositories/sqlite_salary_repository.dart';
 import '../../data/repositories/sqlite_settings_repository.dart';
 import '../../domain/repositories/advance_repository.dart';
 import '../../domain/repositories/attendance_repository.dart';
 import '../../domain/repositories/employee_repository.dart';
+import '../../domain/repositories/salary_payment_repository.dart';
 import '../../domain/repositories/salary_repository.dart';
 import '../../domain/repositories/settings_repository.dart';
 
@@ -43,6 +45,12 @@ final salaryRepositoryProvider = Provider<SalaryRepository>((ref) {
     databaseHelper: dbHelper,
     advanceRepository: advanceRepo,
   );
+});
+
+/// Salary Payment (regular salary, separate from advances) Repository Provider
+final salaryPaymentRepositoryProvider = Provider<SalaryPaymentRepository>((ref) {
+  final dbHelper = ref.watch(databaseHelperProvider);
+  return SqliteSalaryPaymentRepository(databaseHelper: dbHelper);
 });
 
 /// Settings & Backup Repository Provider
