@@ -49,6 +49,34 @@ final employeeMonthAdvancesMapProvider =
   return await repo.getMonthAdvancesMap(employeeId, month.year, month.month);
 });
 
+/// Company-wide advances for a specific month grouped by transaction date ('YYYY-MM-DD')
+final allMonthAdvancesByDateProvider = FutureProvider.family<
+    Map<String, List<Advance>>, ({int year, int month})>((ref, arg) async {
+  final repo = ref.watch(advanceRepositoryProvider);
+  return await repo.getAllMonthAdvancesByDate(arg.year, arg.month);
+});
+
+/// Company-wide advances recorded on a specific date ('YYYY-MM-DD')
+final allDateAdvancesProvider =
+    FutureProvider.family<List<Advance>, String>((ref, dateIso) async {
+  final repo = ref.watch(advanceRepositoryProvider);
+  return await repo.getAllAdvancesForDate(dateIso);
+});
+
+/// Company-wide advances for a specific salary period ('YYYY-MM')
+final allPeriodAdvancesProvider =
+    FutureProvider.family<List<Advance>, String>((ref, salaryPeriod) async {
+  final repo = ref.watch(advanceRepositoryProvider);
+  return await repo.getAllAdvancesForPeriod(salaryPeriod);
+});
+
+/// Salary summary by (employeeId, salaryPeriod) tuple for flexible querying across screens
+final employeePeriodSalarySummaryProvider = FutureProvider.family<
+    SalarySummary, ({String employeeId, String salaryPeriod})>((ref, arg) async {
+  final repo = ref.watch(salaryRepositoryProvider);
+  return await repo.getSalarySummary(arg.employeeId, arg.salaryPeriod);
+});
+
 /// State notifier for salary revisions and advance payments
 class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
@@ -73,15 +101,20 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
         description: description,
       );
 
-      // Refresh financial and calendar providers
+      // Refresh financial and calendar providers across the entire app
       _ref.invalidate(salarySummaryProvider(employeeId));
+      _ref.invalidate(employeePeriodSalarySummaryProvider);
       _ref.invalidate(employeeAdvancesForPeriodProvider(employeeId));
       _ref.invalidate(employeeAllAdvancesProvider(employeeId));
       _ref.invalidate(employeeMonthAdvancesMapProvider(employeeId));
+      _ref.invalidate(allDateAdvancesProvider(transactionDateIso));
+      _ref.invalidate(allMonthAdvancesByDateProvider);
+      _ref.invalidate(allPeriodAdvancesProvider(salaryPeriod));
 
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -95,13 +128,18 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
       await advanceRepo.deleteAdvance(advanceId);
 
       _ref.invalidate(salarySummaryProvider(employeeId));
+      _ref.invalidate(employeePeriodSalarySummaryProvider);
       _ref.invalidate(employeeAdvancesForPeriodProvider(employeeId));
       _ref.invalidate(employeeAllAdvancesProvider(employeeId));
       _ref.invalidate(employeeMonthAdvancesMapProvider(employeeId));
+      _ref.invalidate(allDateAdvancesProvider);
+      _ref.invalidate(allMonthAdvancesByDateProvider);
+      _ref.invalidate(allPeriodAdvancesProvider);
 
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 
@@ -120,11 +158,13 @@ class SalaryActionNotifier extends StateNotifier<AsyncValue<void>> {
       );
 
       _ref.invalidate(salarySummaryProvider(employeeId));
+      _ref.invalidate(employeePeriodSalarySummaryProvider);
       _ref.invalidate(employeeSalaryHistoryProvider(employeeId));
 
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 }

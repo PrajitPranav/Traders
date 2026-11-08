@@ -3,10 +3,15 @@ class AppRoutes {
 
   static const String splash = '/';
   static const String home = '/home';
+  static const String employeeDirectory = '/employees';
   static const String employeeDetail = '/employee/:id';
+  static const String leaveReport = '/leave-report';
+  static const String employeeReports = '/employee-reports';
+  static const String salaryAdvance = '/salary-advance';
   static const String adminProfile = '/admin';
   static const String backupRestore = '/admin/backup-restore';
 
   static String employeeDetailPath(String id) => '/employee/$id';
 }
+
 

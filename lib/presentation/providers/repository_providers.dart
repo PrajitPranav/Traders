@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/services/excel_report_service.dart';
 import '../../data/datasources/database_helper.dart';
 import '../../data/repositories/sqlite_advance_repository.dart';
 import '../../data/repositories/sqlite_attendance_repository.dart';
@@ -49,4 +50,15 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   final dbHelper = ref.watch(databaseHelperProvider);
   return SqliteSettingsRepository(databaseHelper: dbHelper);
 });
+
+/// Excel Report Service Provider
+final excelReportServiceProvider = Provider<ExcelReportService>((ref) {
+  return ExcelReportService(
+    employeeRepository: ref.watch(employeeRepositoryProvider),
+    attendanceRepository: ref.watch(attendanceRepositoryProvider),
+    salaryRepository: ref.watch(salaryRepositoryProvider),
+    advanceRepository: ref.watch(advanceRepositoryProvider),
+  );
+});
+
 

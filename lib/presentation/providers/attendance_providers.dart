@@ -32,6 +32,20 @@ final dailyAttendanceProvider =
   return await repo.getAttendanceForDate(arg.employeeId, arg.dateIso);
 });
 
+/// Company-wide attendance records for a specific month grouped by date ('YYYY-MM-DD')
+final allMonthAttendanceByDateProvider = FutureProvider.family<
+    Map<String, List<Attendance>>, ({int year, int month})>((ref, arg) async {
+  final repo = ref.watch(attendanceRepositoryProvider);
+  return await repo.getAllMonthAttendanceByDate(arg.year, arg.month);
+});
+
+/// Company-wide attendance records for a specific date ('YYYY-MM-DD')
+final allDateAttendanceProvider =
+    FutureProvider.family<List<Attendance>, String>((ref, dateIso) async {
+  final repo = ref.watch(attendanceRepositoryProvider);
+  return await repo.getAllAttendanceForDate(dateIso);
+});
+
 /// State notifier for attendance mutation operations
 class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
@@ -56,6 +70,8 @@ class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(employeeAttendanceMapProvider(employeeId));
       _ref.invalidate(employeeAttendanceCountsProvider(employeeId));
       _ref.invalidate(dailyAttendanceProvider((employeeId: employeeId, dateIso: dateIso)));
+      _ref.invalidate(allDateAttendanceProvider(dateIso));
+      _ref.invalidate(allMonthAttendanceByDateProvider);
       _ref.invalidate(dashboardStatsProvider);
 
       state = const AsyncValue.data(null);
@@ -79,6 +95,8 @@ class AttendanceActionNotifier extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(employeeAttendanceMapProvider(employeeId));
       _ref.invalidate(employeeAttendanceCountsProvider(employeeId));
       _ref.invalidate(dailyAttendanceProvider((employeeId: employeeId, dateIso: dateIso)));
+      _ref.invalidate(allDateAttendanceProvider(dateIso));
+      _ref.invalidate(allMonthAttendanceByDateProvider);
       _ref.invalidate(dashboardStatsProvider);
 
       state = const AsyncValue.data(null);

@@ -140,5 +140,46 @@ class SqliteAttendanceRepository implements AttendanceRepository {
     ));
     return count ?? 0;
   }
+
+  @override
+  Future<List<Attendance>> getAllAttendanceForDate(String dateIso) async {
+    final db = await _databaseHelper.database;
+    final maps = await db.rawQuery(
+      '''
+      SELECT a.* 
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      WHERE a.attendance_date = ? AND e.is_active = 1
+      ORDER BY e.employee_code ASC
+      ''',
+      [dateIso],
+    );
+    return maps.map((m) => AttendanceModel.fromMap(m).toEntity()).toList();
+  }
+
+  @override
+  Future<Map<String, List<Attendance>>> getAllMonthAttendanceByDate(int year, int month) async {
+    final db = await _databaseHelper.database;
+    final monthStr = month.toString().padLeft(2, '0');
+    final pattern = '$year-$monthStr%';
+
+    final maps = await db.rawQuery(
+      '''
+      SELECT a.* 
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      WHERE a.attendance_date LIKE ? AND e.is_active = 1
+      ORDER BY a.attendance_date ASC, e.employee_code ASC
+      ''',
+      [pattern],
+    );
+
+    final result = <String, List<Attendance>>{};
+    for (final m in maps) {
+      final entity = AttendanceModel.fromMap(m).toEntity();
+      result.putIfAbsent(entity.attendanceDate, () => []).add(entity);
+    }
+    return result;
+  }
 }
 

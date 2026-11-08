@@ -1,4 +1,6 @@
 import 'package:uuid/uuid.dart';
+import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/date_formatter.dart';
 import '../../domain/entities/advance.dart';
 import '../../domain/repositories/advance_repository.dart';
 import '../datasources/database_helper.dart';
@@ -97,6 +99,10 @@ class SqliteAdvanceRepository implements AdvanceRepository {
     required String salaryPeriod,
     String? description,
   }) async {
+    if (amountPaise <= 0) {
+      throw ArgumentError('Advance amount must be greater than zero.');
+    }
+
     final db = await _databaseHelper.database;
     final now = DateTime.now();
     final advanceId = _uuid.v4();
@@ -112,7 +118,60 @@ class SqliteAdvanceRepository implements AdvanceRepository {
       updatedAt: now,
     );
 
-    await db.insert('advances', AdvanceModel.fromEntity(advance).toMap());
+    await db.transaction((txn) async {
+      // Determine applicable monthly salary for the period
+      final parts = salaryPeriod.split('-');
+      String lastDayIso = transactionDateIso;
+      if (parts.length == 2) {
+        final year = int.tryParse(parts[0]);
+        final month = int.tryParse(parts[1]);
+        if (year != null && month != null) {
+          final lastDay = DateTime(year, month + 1, 0);
+          lastDayIso = AppDateUtils.toIsoDateString(lastDay);
+        }
+      }
+
+      var salaryRows = await txn.query(
+        'salary_records',
+        where: 'employee_id = ? AND effective_from <= ?',
+        whereArgs: [employeeId, lastDayIso],
+        orderBy: 'effective_from DESC, created_at DESC',
+        limit: 1,
+      );
+
+      if (salaryRows.isEmpty) {
+        salaryRows = await txn.query(
+          'salary_records',
+          where: 'employee_id = ?',
+          whereArgs: [employeeId],
+          orderBy: 'effective_from ASC, created_at ASC',
+          limit: 1,
+        );
+      }
+
+      final monthlySalaryPaise = salaryRows.isNotEmpty
+          ? (salaryRows.first['monthly_salary_paise'] as num).toInt()
+          : 0;
+
+      final existingResult = await txn.rawQuery(
+        'SELECT SUM(amount_paise) as total FROM advances WHERE employee_id = ? AND salary_period = ?',
+        [employeeId, salaryPeriod],
+      );
+      final existingAdvancesPaise =
+          (existingResult.isNotEmpty && existingResult.first['total'] != null)
+              ? (existingResult.first['total'] as num).toInt()
+              : 0;
+
+      final remainingPaise = monthlySalaryPaise - existingAdvancesPaise;
+
+      if (monthlySalaryPaise > 0 && amountPaise > remainingPaise) {
+        throw StateError(
+          'Advance of ${CurrencyFormatter.formatPaise(amountPaise)} exceeds the remaining salary balance of ${CurrencyFormatter.formatPaise(remainingPaise)} for period $salaryPeriod.',
+        );
+      }
+
+      await txn.insert('advances', AdvanceModel.fromEntity(advance).toMap());
+    });
     return advance;
   }
 
@@ -149,6 +208,63 @@ class SqliteAdvanceRepository implements AdvanceRepository {
       where: 'id = ?',
       whereArgs: [advanceId],
     );
+  }
+
+  @override
+  Future<List<Advance>> getAllAdvancesForDate(String dateIso) async {
+    final db = await _databaseHelper.database;
+    final maps = await db.rawQuery(
+      '''
+      SELECT adv.* 
+      FROM advances adv
+      JOIN employees e ON adv.employee_id = e.id
+      WHERE adv.transaction_date = ? AND e.is_active = 1
+      ORDER BY adv.created_at ASC
+      ''',
+      [dateIso],
+    );
+    return maps.map((m) => AdvanceModel.fromMap(m).toEntity()).toList();
+  }
+
+  @override
+  Future<Map<String, List<Advance>>> getAllMonthAdvancesByDate(int year, int month) async {
+    final db = await _databaseHelper.database;
+    final monthStr = month.toString().padLeft(2, '0');
+    final pattern = '$year-$monthStr%';
+
+    final maps = await db.rawQuery(
+      '''
+      SELECT adv.* 
+      FROM advances adv
+      JOIN employees e ON adv.employee_id = e.id
+      WHERE adv.transaction_date LIKE ? AND e.is_active = 1
+      ORDER BY adv.transaction_date ASC, adv.created_at ASC
+      ''',
+      [pattern],
+    );
+
+    final map = <String, List<Advance>>{};
+    for (final m in maps) {
+      final advance = AdvanceModel.fromMap(m).toEntity();
+      map.putIfAbsent(advance.transactionDate, () => []).add(advance);
+    }
+    return map;
+  }
+
+  @override
+  Future<List<Advance>> getAllAdvancesForPeriod(String salaryPeriod) async {
+    final db = await _databaseHelper.database;
+    final maps = await db.rawQuery(
+      '''
+      SELECT adv.* 
+      FROM advances adv
+      JOIN employees e ON adv.employee_id = e.id
+      WHERE adv.salary_period = ? AND e.is_active = 1
+      ORDER BY adv.transaction_date ASC, adv.created_at ASC
+      ''',
+      [salaryPeriod],
+    );
+    return maps.map((m) => AdvanceModel.fromMap(m).toEntity()).toList();
   }
 }
 

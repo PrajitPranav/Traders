@@ -7,15 +7,28 @@ class AppStrings {
 
   // Home
   static const String dashboard = 'Dashboard';
+  static const String welcomeBack = 'Welcome Back';
+  static const String leaveReport = 'Leave Report';
+  static const String leaveReportSubtitle = 'View attendance and daily employee activity';
   static const String totalEmployees = 'Total Employees';
+  static const String employeeReport = 'Employee Report';
+  static const String employeeReportSubtitle =
+      'Download monthly employee attendance and salary reports.';
+  static const String salaryAndAdvance = 'Salary / Salary Advance';
+  static const String salaryAndAdvanceSubtitle =
+      'Record and manage employee salary advances.';
+  static const String employeesSectionSubtitle = 'Manage and view all employees';
   static const String presentToday = 'Present Today';
   static const String absentToday = 'Absent Today';
   static const String addMember = 'Add Member';
   static const String employees = 'Employees';
+  static const String employeeDirectory = 'Employee Directory';
   static const String searchEmployees = 'Search by name or code...';
   static const String noEmployeesFound = 'No employees found';
   static const String noEmployeesYet = 'No employees added yet';
   static const String getStartedAdding = 'Tap "+ Add Member" to register your first employee.';
+  static const String downloadExcelReport = 'Download Excel Report';
+  static const String noAdvancesForDate = 'No salary advances recorded for this date.';
 
   // Employee Form
   static const String addEmployee = 'Add Employee';

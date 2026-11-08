@@ -32,5 +32,11 @@ abstract class AttendanceRepository {
 
   /// Today's absent count across all active employees.
   Future<int> getTodayAbsentCount(String todayIso);
+
+  /// Retrieves all attendance records across active employees for a specific date ('YYYY-MM-DD').
+  Future<List<Attendance>> getAllAttendanceForDate(String dateIso);
+
+  /// Retrieves all attendance records across active employees for a specific month, grouped by date ('YYYY-MM-DD').
+  Future<Map<String, List<Attendance>>> getAllMonthAttendanceByDate(int year, int month);
 }
 

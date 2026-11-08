@@ -37,5 +37,14 @@ abstract class AdvanceRepository {
 
   /// Deletes an advance record.
   Future<void> deleteAdvance(String advanceId);
+
+  /// Retrieves all advance transactions across active employees recorded on a specific date ('YYYY-MM-DD').
+  Future<List<Advance>> getAllAdvancesForDate(String dateIso);
+
+  /// Retrieves all advance transactions across active employees for a given month, grouped by transaction date ('YYYY-MM-DD').
+  Future<Map<String, List<Advance>>> getAllMonthAdvancesByDate(int year, int month);
+
+  /// Retrieves all advance transactions across active employees for a given salary period ('YYYY-MM').
+  Future<List<Advance>> getAllAdvancesForPeriod(String salaryPeriod);
 }
 

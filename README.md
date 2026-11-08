@@ -20,9 +20,16 @@ A modern, robust, offline-first Android application designed and engineered for 
    - Elegant startup flow with seamless transition into the dashboard.
    - Clean, corporate Material Design 3 UI with deep navy (`#142B50`), teal (`#087E8B`), and crisp typography.
 
-2. **Employee Directory:**
+2. **Executive Home Dashboard (HCI-Optimized):**
+   - **Leave Report (Hero Action):** Dedicated monthly calendar displaying daily Present, Absent, and Not Marked employees alongside date-specific prepaid salary advance transactions.
+   - **Total Employees Card:** Displays live active employee count and navigates to the dedicated Employee Directory (no employee names cluttered on the home screen).
+   - **Employee Report Card:** Generates real 4-sheet `.xlsx` Excel reports (Consolidated or Individual Employee) with one-tap download and sharing.
+   - **Salary / Salary Advance Card:** Direct prepaid salary advance recording with searchable employee selector, real-time remaining balance preview, and overpayment protection.
+   - **Employees Entry Button:** Opens the full searchable Employee Directory.
+
+3. **Employee Directory:**
    - Auto-generated sequential, non-reusable employee codes (`EMP0001`, `EMP0002`, ...).
-   - Real-time search by employee name or code.
+   - Real-time search by employee name, code, or designation.
    - Full employee profile management: designation, phone number, joining date, and salary.
    - Soft deactivation preserving historical financial and attendance integrity.
 
