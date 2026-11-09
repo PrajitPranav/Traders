@@ -1,4 +1,4 @@
-   # TRADERS — SARAVANAS (Employee Management Application)
+   # TRADERS — (Employee Management Application)
 
 A modern, robust, offline-first Android application designed and engineered for employee management, attendance tracking, and salary/advance ledger management for **Saravanas**.
 
