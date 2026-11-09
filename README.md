@@ -11,7 +11,7 @@ A modern, robust, offline-first Android application designed and engineered for 
 - **Primary Audience:** Company Owner / Administrator (Single-tenant, offline, high-reliability)
 - **Tagline:** *People. Work. Management.*
 
----
+
 
 ## 2. Key Features
 
@@ -52,7 +52,7 @@ A modern, robust, offline-first Android application designed and engineered for 
    - Local JSON-based backup and restore with checksum and schema validation.
    - Absolute protection against data leakage between employees and periods.
 
----
+
 
 ## 3. Technology Stack
 
@@ -64,13 +64,13 @@ A modern, robust, offline-first Android application designed and engineered for 
 - **Calendar:** `table_calendar`
 - **Formatting & Utilities:** `intl`, `uuid`
 
----
+
 
 ## 4. Architecture: Clean Architecture & Repository Abstraction
 
 The project is structured according to Clean Architecture principles to ensure that the SQLite data layer can be seamlessly swapped with a remote MySQL/Node.js API in the future without modifying any UI or domain logic.
 
-```
+
 lib/
 ├── core/
 │   ├── constants/       # App constants, routes, asset paths, keys
@@ -94,7 +94,7 @@ lib/
     │   ├── salary/      # Financial cards, advance list, record advance dialog
     │   └── admin/       # Administrator profile, backup & restore, about
     └── widgets/         # Common UI components (cards, buttons, inputs, dialogs)
-```
+
 
 ### Future MySQL Migration Path
 
